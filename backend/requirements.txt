@@ -1,0 +1,11 @@
+fastapi>=0.110.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+sqlalchemy[asyncio]>=2.0.28
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
+openai>=1.12.0
+pypdf>=4.0.0
+python-multipart>=0.0.9
+numpy>=1.24.0
