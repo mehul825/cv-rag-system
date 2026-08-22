@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
     OLLAMA_CHAT_MODEL: str = "llama3.2"
 
+    # Hugging Face Configuration
+    HF_TOKEN: str = ""
+    HF_MODEL: str = "google/gemma-3-4b-it"
+    HF_API_URL: str = "https://router.huggingface.co/v1"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

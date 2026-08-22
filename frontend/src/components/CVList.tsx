@@ -4,6 +4,14 @@ interface Resume {
   id: number;
   filename: string;
   uploaded_at: string;
+  status?: 'queued' | 'parsing' | 'extracting' | 'indexing' | 'rag_ready' | 'failed';
+  error_message?: string;
+  trace_id?: string;
+  parsing_duration?: number;
+  extraction_duration?: number;
+  indexing_duration?: number;
+  verification_duration?: number;
+  total_duration?: number;
 }
 
 interface CVListProps {
@@ -68,9 +76,23 @@ export const CVList: React.FC<CVListProps> = ({ resumes, selectedId, onSelect, o
                   <p className="resume-filename" title={resume.filename}>
                     {resume.filename}
                   </p>
-                  <p className="resume-date">
-                    {formatDate(resume.uploaded_at)}
-                  </p>
+                  <div className="resume-meta-row">
+                    <p className="resume-date">
+                      {formatDate(resume.uploaded_at)}
+                    </p>
+                    {resume.status && (
+                      <span 
+                        className={`status-badge-inline ${resume.status}`}
+                        title={
+                          resume.status === 'failed' && resume.error_message
+                            ? `Error: ${resume.error_message}`
+                            : `Status: ${resume.status}\nTrace ID: ${resume.trace_id || 'N/A'}\nParsing: ${resume.parsing_duration?.toFixed(2) || 0}s\nExtraction: ${resume.extraction_duration?.toFixed(2) || 0}s\nIndexing: ${resume.indexing_duration?.toFixed(2) || 0}s\nVerification: ${resume.verification_duration?.toFixed(2) || 0}s\nTotal: ${resume.total_duration?.toFixed(2) || 0}s`
+                        }
+                      >
+                        {resume.status.replace('_', ' ')}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               

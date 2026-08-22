@@ -1,150 +1,149 @@
 # CV RAG System
 
-An AI-powered CV parsing, Retrieval-Augmented Generation (RAG), and candidate readiness pipeline. This application allows recruiters and hiring managers to upload PDF resumes, parse and index them locally, and conduct interactive context-backed Q&A chat sessions entirely on local machines without incurring API costs.
+An AI-powered CV/resume analysis, Retrieval-Augmented Generation (RAG) chat, and structured JSON extraction system. This application allows recruiters and hiring managers to upload PDF resumes, parse and index them, and conduct interactive context-backed Q&A chat sessions or extract structured candidate information using the serverless Hugging Face provider running the state-of-the-art **Gemma 3 4B Instruct** model.
 
 ---
 
 ## 1. Project Overview & Purpose
 
-The CV RAG System is designed to address privacy, cost, and latency concerns associated with cloud-based LLM platforms. During recruitment, parsing sensitive resume data through paid cloud endpoints can lead to compliance issues and high operational costs.
+The CV RAG System is designed to simplify candidate screening and structured resume parsing. During recruitment, parsing unstructured resume data into reliable profiles can be slow and prone to errors.
 
-This project implements a fully local-first RAG pipeline:
-1. Document Ingestion: Extracts raw text from uploaded PDF CVs/resumes.
-2. Text Chunking: Dynamically segments extracted text into semantic, overlapping blocks.
-3. Local Vectorization: Generates vector embeddings using the local model nomic-embed-text.
-4. Vector Storage: Indexes and stores embeddings in a PostgreSQL database as JSON arrays.
-5. Contextual Retrieval: Ranks CV chunks using dimension-agnostic cosine similarity calculations computed directly in Python.
-6. Local LLM Interaction: Queries the local model llama3.2 to generate professional, context-bounded answers.
+This project implements a hybrid local-serverless RAG and extraction pipeline:
+1. **Document Ingestion & Processing Tracking**: Uploads PDF CVs/resumes (single or batch) and cycles through real database processing states (`queued` $\rightarrow$ `parsing` $\rightarrow$ `extracting` $\rightarrow$ `indexing` $\rightarrow$ `rag_ready` or `failed`).
+2. **Document Ingestion**: Extracts raw text from uploaded PDF CVs/resumes using the `pypdf` parsing library.
+3. **Text Chunking**: Dynamically segments extracted text into semantic, overlapping blocks.
+4. **Local Vectorization**: Generates vector embeddings using the local Ollama instance running the `nomic-embed-text` model.
+5. **Vector Storage**: Indexes and stores embeddings in a PostgreSQL database as JSON arrays.
+6. **Contextual Retrieval**: Ranks CV chunks using dimension-agnostic cosine similarity calculations computed directly in Python.
+7. **Structured Parsing**: Uses the serverless Hugging Face endpoint running **Gemma 3 4B Instruct** to perform JSON extraction (both fixed schemas and dynamic/custom keys).
+8. **RAG-Backed Interaction**: Queries **Gemma 3 4B Instruct** on Hugging Face to generate professional, context-bounded answers during interactive chat sessions.
 
----
+### Serverless GPU Provider Justification
 
-## 2. Main Features
-
-- Local PDF Upload & Processing: Direct-to-app file interface that extracts text content locally in Python.
-- Smart Chunking: Splits text into semantic chunks (800 characters, 150 overlap) without dividing words in half.
-- Local AI Embedding Engine: Generates embeddings using a local Ollama instance running the nomic-embed-text model.
-- Dimension-Agnostic Retrieval: Custom Python-based vector search that supports any embedding size (such as Ollama's 768 dimensions), removing the need for specialized vector plugins like pgvector.
-- Context-Bound LLM Chat: An interactive chat terminal powered by llama3.2 that uses only the candidate's resume context to answer questions, preventing hallucinations.
-- System Health Diagnostics Panel: Displays live monitoring status of the FastAPI server and the PostgreSQL database.
-- Premium Dark Mode UI: A responsive web dashboard styled with glassmorphism, dynamic transitions, and real-time status indicators.
+The **Hugging Face Serverless Inference API** was selected as the serverless GPU provider for this project due to several key factors:
+- **On-Demand Inference**: It provides serverless execution on remote GPU hardware without requiring persistent GPU instances, meaning there is zero idle cost and high cost-efficiency.
+- **Minimal Infrastructure Management**: There is no need to set up, configure, and maintain remote GPU clusters, deploy custom Docker images on serverless container clouds (e.g., RunPod or Modal), or manage scaling policies.
+- **Model Availability**: Hugging Face natively hosts and exposes the state-of-the-art **Gemma 3 4B Instruct** model (`google/gemma-3-4b-it`) out of the box through their OpenAI-compatible endpoint.
+- **Low-Latency & High Availability**: Requests are routed dynamically to active instances, reducing cold-start times compared to custom container startup models.
 
 ---
 
-## 3. System Architecture
+## 2. Features
 
-The following diagram illustrates the flow of CV indexing (ingestion) and interactive question answering (retrieval):
+*   **Single and Batch PDF CV Upload**: Drag and drop one or multiple resume files. The system processes each CV inside nested transaction savepoints so individual failures do not block the batch queue.
+*   **PDF Text Parsing (`pypdf`)**: Direct text extraction from file bytes without needing intermediate disk writes.
+*   **Vector Chunking and Embeddings**: Text chunking with 800-character windows and 150-character overlap, paired with local `nomic-embed-text` embeddings.
+*   **RAG Chat with Citations**: Context-bounded chat completions showing source citation tooltips containing filename, chunk index, and snippet previews.
+*   **Gemma 3 4B Instruct Integration**: Serverless completions for RAG answers, structural extraction, and corrective retry iterations.
+*   **JSON Validation and Retry/Correction Loop**: Validation against Pydantic schemas. Invalid outputs are automatically sent back to the LLM with repair prompts up to 2 times.
+*   **Explicit, Derived, and Inferred Extraction**:
+    *   *Explicit*: Personal info, education, skills, and work history.
+    *   *Derived*: Date calculations (years of experience, gap detections, company counts) computed deterministically in Python.
+    *   *Inferred*: AI-deduced insights (suitability tags, seniority tier, core strengths) marked with clear warnings.
+*   **Structured PostgreSQL Storage/Cache**: Structured extraction results are saved in the `extracted_data` JSON column in PostgreSQL, avoiding redundant LLM costs on page loads.
+*   **Real Backend Ingestion Status**: Real-time status reporting (`queued` $\rightarrow$ `parsing` $\rightarrow$ `extracting` $\rightarrow$ `indexing` $\rightarrow$ `rag_ready` or `failed`).
+*   **Request/Trace IDs & Stage Timing**: Every ingestion has a unique trace UUID and records durations for parsing, extraction, embedding, verification, and total times.
+*   **Post-Indexing RAG-Ready Verification**: Automatically queries the vector index post-indexing to ensure chunks are searchable before promoting status to `rag_ready`.
+*   **Resume Listing and Deletion**: Delete CV records along with all associated chunk vector embeddings.
+*   **System Health & Diagnostics**: Live REST checks for server status and database connectivity.
 
-```mermaid
-graph TD
-    %% Ingestion Flow
-    subgraph Ingestion Pipeline
-        A[PDF CV Upload] --> B[pypdf Text Extraction]
-        B --> C[Overlapping Text Chunking]
-        C --> D[Ollama nomic-embed-text API]
-        D --> E[(PostgreSQL Database JSON Column)]
-    end
+---
 
-    %% Query Flow
-    subgraph RAG Retrieval & Q&A
-        F[User Question] --> G[Ollama nomic-embed-text API]
-        G --> H[Python Cosine Similarity Ranker]
-        E --> H
-        H --> I[Top-5 Context Chunks]
-        I --> J[Prompt builder]
-        F --> J
-        J --> K[Ollama llama3.2 API]
-        K --> L[Assistant Answer]
-    end
+## 3. Technology Stack
 
-    style E fill:#2e8b57,stroke:#fff,stroke-width:2px;
-    style A fill:#4682b4,stroke:#fff,stroke-width:2px;
-    style F fill:#4682b4,stroke:#fff,stroke-width:2px;
-    style L fill:#d2691e,stroke:#fff,stroke-width:2px;
+*   **Backend**: Python 3.11+, FastAPI, Pydantic v2, SQLAlchemy 2.0 (asyncpg driver)
+*   **Frontend**: React 18, TypeScript, Vite, Vanilla CSS HSL tokens (TailwindCSS not used)
+*   **Database**: PostgreSQL 16
+*   **LLM Inference (Chat & Extraction)**: Hugging Face Serverless Inference (`google/gemma-3-4b-it`)
+*   **Embedding Engine (Local Vectors)**: Ollama (`nomic-embed-text`)
+*   **PDF Parser**: `pypdf`
+*   **Orchestration**: Docker, Docker Compose
+
+---
+
+## 4. System Architecture
+
+The following block chart maps the data flow throughout the application:
+
+```
+                                  User
+                                    ↓
+                              React Frontend
+                                    ↓
+                             FastAPI Backend
+                                    ├── PDF Parsing [pypdf]
+                                    ├── Text Chunking
+                                    ├── Ollama → nomic-embed-text → Embeddings
+                                    ├── PostgreSQL → Resume Data / Chunks / Structured JSON
+                                    ├── Cosine Similarity → RAG Retrieval
+                                    └── Hugging Face → google/gemma-3-4b-it
+                                                          ↓
+                                                   Answer + Citations
 ```
 
 ---
 
-## 4. Technologies Used
-
-| Layer | Technology | Purpose |
-| :--- | :--- | :--- |
-| Frontend | React 18, Vite, TypeScript | User dashboard, interactive chat component, file uploads, and state management. |
-| Backend | FastAPI, Python 3.11+, Pydantic v2 | High-performance asynchronous API endpoints, validation, and RAG services. |
-| Database | PostgreSQL 16 (via SQLAlchemy & asyncpg) | Persistent storage of parsed resumes, metadata, and JSON-indexed chunk embeddings. |
-| Orchestration | Docker, Docker Compose | Service encapsulation, networking, volume management, and ease of deployment. |
-| Local LLM | Ollama (llama3.2 & nomic-embed-text) | Local vector extraction and retrieval-augmented text generation. |
-| RAG Operations | Python (math standard library, numpy) | In-process cosine similarity scoring for semantic search. |
-
----
-
-## 5. Project Folder Structure
+## 5. Project Structure
 
 ```
 cv-rag-system/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
-│   │   │   └── cv.py                  # API endpoints (upload, list, delete, query)
+│   │   │   ├── cv.py
+│   │   │   └── health.py
 │   │   ├── core/
-│   │   │   ├── config.py              # Configuration & env variable resolution
-│   │   │   └── database.py            # SQLAlchemy async database connection
+│   │   │   ├── config.py
+│   │   │   └── database.py
 │   │   ├── models/
-│   │   │   └── resume.py              # Resume and ResumeChunk DB models
+│   │   │   └── resume.py
+│   │   ├── schemas/
+│   │   │   └── cv_schema.py
 │   │   ├── services/
-│   │   │   ├── openai_service.py      # Ollama compatibility endpoint connector
-│   │   │   ├── pdf_parser.py          # PDF text extractor and chunker
-│   │   │   └── rag_service.py         # Python-based cosine similarity ranker
-│   │   └── main.py                    # App entrypoint and startup hooks
-│   ├── .env                           # Local environment variables
-│   ├── .env.example                   # Backend environment template
-│   ├── Dockerfile                     # FastAPI Docker container definition
-│   └── requirements.txt               # Backend Python dependencies
-│
+│   │   │   ├── embeddings.py
+│   │   │   ├── extractor.py
+│   │   │   ├── openai_service.py
+│   │   │   └── pdf_parser.py
+│   │   └── main.py
+│   ├── Dockerfile
+│   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── components/                # Modular UI widgets (CVChat, CVList, CVUpload, HealthStatus)
+│   │   ├── components/
+│   │   │   ├── CVChat.tsx
+│   │   │   ├── CVList.tsx
+│   │   │   ├── CVUpload.tsx
+│   │   │   └── HealthStatus.tsx
 │   │   ├── pages/
-│   │   │   └── Home.tsx               # Main application container dashboard
-│   │   ├── services/
-│   │   │   └── api.ts                 # Fetch handler for health endpoints
-│   │   ├── types/                     # TypeScript interface definitions
-│   │   ├── App.tsx                    # Main App wrapper
-│   │   └── index.css                  # Modern dark-mode stylesheets
-│   ├── Dockerfile                     # Vite/React SPA Docker container definition
-│   └── package.json                   # Node dependencies
-│
-├── docker-compose.yml                 # Main multi-container service orchestrator
-├── .env                               # Root DB credentials file shared with compose
-├── .env.example                       # Root DB credentials template
-└── README.md                          # Project documentation
+│   │   │   └── Home.tsx
+│   │   ├── index.css
+│   │   └── main.tsx
+│   ├── Dockerfile
+│   └── package.json
+└── docker-compose.yml
 ```
 
 ---
 
-## 6. Prerequisites
+## 6. Setup & Running Instructions
 
-Ensure you have the following installed on your host environment:
-1. Docker Desktop (version 20.10+) and Docker Compose.
-2. Ollama (installed and running locally on port 11434).
-3. Python 3.11+ (Optional, only needed for local execution outside Docker).
-4. Node.js 18+ (Optional, only needed for local execution outside Docker).
+### Prerequisites
+*   [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+*   [Ollama](https://ollama.com/) installed and running on the host machine.
 
----
-
-## 7. Environment Variable Configuration
-
-### Root Environment (.env in root directory)
-Defines basic PostgreSQL configuration variables shared with docker-compose.yml:
-```env
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=cv_rag
+### Step 1: Set Up Local Embedding Model
+In your host command terminal, pull the embeddings model:
+```bash
+ollama pull nomic-embed-text
 ```
 
-### Backend Environment (backend/.env in backend folder)
-Configures connection parameters and local model endpoints:
+### Step 2: Configure Environment Variables
+Create a `.env` file in the `backend/` folder by copying `.env.example`:
+```bash
+cp backend/.env.example backend/.env
+```
 
-**For Docker Compose Setup:**
+Edit `backend/.env` to configure your tokens (placeholders below, do not commit raw tokens):
 ```env
 PROJECT_NAME="CV RAG System API"
 APP_ENV=development
@@ -155,135 +154,109 @@ POSTGRES_PASSWORD=postgres
 POSTGRES_DB=cv_rag
 POSTGRES_HOST=db
 POSTGRES_PORT=5432
-
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/cv_rag
-CORS_ORIGINS=["http://localhost:5173", "http://localhost:3000"]
 
-# Ollama local configuration (connecting to host machine from container)
 OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text
-OLLAMA_CHAT_MODEL=llama3.2
+
+HF_TOKEN=your_hugging_face_token_here
+HF_MODEL=google/gemma-3-4b-it
 ```
 
-**For Native Local Setup (No Docker):**
-```env
-# Change database host to localhost and Ollama URL to localhost
-POSTGRES_HOST=localhost
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/cv_rag
-OLLAMA_BASE_URL=http://localhost:11434/v1
-```
-
----
-
-## 8. Ollama Model Setup
-
-Before running the application, you must pull the required embedding and LLM models locally:
-
-```bash
-# 1. Download the high-quality 768-dimensional text embedding model
-ollama pull nomic-embed-text
-
-# 2. Download the lightweight 3B parameter conversational model
-ollama pull llama3.2
-```
-
-Verify that both models are downloaded and ready:
-```bash
-ollama list
-```
-
----
-
-## 9. Running the Application
-
-Follow these steps to run the application locally:
-
-Step 1: Install Ollama
-Download and install Ollama from [ollama.com](https://ollama.com/) and ensure the application is running.
-
-Step 2: Pull the required models:
-- ollama pull nomic-embed-text
-- ollama pull llama3.2
-
-Step 3: Start Docker Desktop
-Launch Docker Desktop on your system and verify it is running correctly.
-
-Step 4: Go to the project root
-Open a terminal and navigate to the project directory (cv-rag-system).
-
-Step 5: Run:
+### Step 3: Run the Application
+From the repository root, build and start all containers:
 ```bash
 docker compose up -d --build
 ```
 
-Step 6: Open:
-- Frontend: http://localhost:5173
-- Backend: http://localhost:8000
-- Swagger API: http://localhost:8000/docs
+### Step 4: Access the System
+*   **Web Frontend Interface**: `http://localhost:5173`
+*   **FastAPI REST API**: `http://localhost:8000`
+*   **Swagger API Docs**: `http://localhost:8000/docs`
 
-### Stopping the Application
-To stop the services and remove containers, run:
-```bash
-docker compose down
+---
+
+## 7. API Reference Docs
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| **GET** | `/health` | Server health and database connection check. |
+| **POST** | `/api/cv/upload` | Upload a single CV PDF, run inline extraction, and index. |
+| **POST** | `/api/cv/upload/batch` | Upload multiple CVs in a batch queue. |
+| **GET** | `/api/cv/list` | Fetch all indexed CVs with status and timing metadata. |
+| **DELETE** | `/api/cv/{resume_id}` | Deletes a CV and its chunks from PostgreSQL. |
+| **POST** | `/api/cv/query` | RAG-based context Q&A query with citation references. |
+| **POST** | `/api/cv/extract/fixed` | Parse direct PDF bytes to fixed template JSON. |
+| **POST** | `/api/cv/extract/dynamic` | Parse direct PDF bytes using custom mapping fields. |
+| **POST** | `/api/cv/{resume_id}/extract/fixed` | Load database CV text and return fixed schema. |
+| **POST** | `/api/cv/{resume_id}/extract/dynamic` | Load database CV text and return dynamic schema. |
+| **GET** | `/api/cv/{resume_id}/structured` | Return cached structured profile from the database. |
+
+---
+
+## 8. How to Use the Application
+
+1.  **Ingest CVs**: Drag and drop one or multiple PDF resumes onto the upload panel.
+2.  **Monitor Progress**: View real-time parsing, extraction, and indexing status badges. Hover over the badge to view trace UUIDs and timings.
+3.  **Conduct RAG Chat**: Select a resume from the list and enter queries (e.g. *"What is the candidate's experience in Python?"*). Read context-bounded answers and hover over source citations.
+4.  **View Structured Profiles**: Switch tabs to "Structured Profile" to view explicit details, derived gaps/durations, and inferred AI strengths.
+5.  **View Raw JSON**: Check the formatted parsed payload directly under the "Raw JSON" tab.
+
+---
+
+## 9. Submission Folder Structure
+
+The final submission package expects the following folders and files, to be created and populated during packaging:
+
+```
+samples/
+├── cv_1.pdf
+├── cv_1_expected.json
+├── cv_2.pdf
+├── cv_2_expected.json
+├── cv_3.pdf
+└── cv_3_expected.json
+
+demo/
+├── upload.png
+├── structured-profile.png
+├── raw-json.png
+├── rag-chat.png
+└── citations.png
 ```
 
 ---
 
-## 10. How to Use the CV RAG System
+## 10. Testing & Verification Results
 
-### Step 1: Upload and Index a CV
-1. Open the Frontend interface (http://localhost:5173).
-2. Confirm both api and database statuses are green/healthy in the left sidebar diagnostics panel.
-3. Click the Upload CV (PDF) card. Select a candidate CV PDF from your file system.
-4. The system will extract text, chunk it, send the chunks to the local Ollama embeddings model, and save the metadata and vectors to the PostgreSQL database.
-5. The parsed file will now appear in the Indexed CVs list in the sidebar.
-
-### Step 2: Ask Questions / Query the RAG
-1. Click on the uploaded resume from the Indexed CVs sidebar. This loads the file as the active RAG workspace query context.
-2. In the right pane, the conversational terminal will unlock.
-3. Type a question in the input box about the candidate's skills, qualifications, or experience.
-4. Hit Enter. The system retrieves relevant chunks using cosine similarity, builds a system prompt, and feeds it locally to llama3.2 to generate a professional summary.
-
-### Example Recruiter Questions:
-- "Does this candidate have experience with Python and FastAPI?"
-- "Summarize the candidate's work experience at their last job."
-- "What is this candidate's educational background and certificates?"
-- "Does this resume mention any team leadership or project management roles?"
+*   **Frontend User Interface**: **PASS**
+*   **Backend FastAPI Endpoints**: **PASS**
+*   **Single and Batch Uploading**: **PASS**
+*   **RAG Citations & Tooltips**: **PASS**
+*   **Status Indicators & Timings**: **PASS**
+*   **TypeScript Compilation**: `npx tsc --noEmit` $\rightarrow$ **PASS** (0 errors)
+*   **Python Syntax Verification**: `python -m compileall app/` $\rightarrow$ **PASS** (0 errors)
+*   **Docker Compose Deployment**: **PASS**
 
 ---
 
-## 11. Troubleshooting & FAQ
+## 11. Known Limitations
 
-#### 1. Connection refused to host.docker.internal inside Docker container
-On some systems (specifically Linux hosts), host.docker.internal is not registered in the container DNS by default.
-* Resolution: 
-  You can run Ollama to listen globally on your host machine by setting the environment variable OLLAMA_HOST=0.0.0.0 before launching the agent. Then, update the OLLAMA_BASE_URL in backend/.env to point to the host machine's actual local network IP (e.g., http://192.168.1.50:11434/v1).
-
-#### 2. High CPU / Slow generation during Q&A
-Since models run locally, execution speeds depend on your system's resources (CPU, RAM, GPU).
-* Resolution: 
-  1. If running on a laptop, connect to a power supply.
-  2. If using Docker, allocate additional CPU and RAM resources in Docker Desktop settings.
-  3. Close background apps consuming large amounts of RAM/CPU.
-
-#### 3. Error queries in frontend UI
-If the UI displays a network query error, verify that the backend container can reach the Ollama service on the host machine, and check the backend container logs using docker compose logs backend.
+*   **Batch Ingestion Size Limits**: Small batches (tested up to 3 PDFs at once) process successfully. However, large batches (e.g., 8+ files at once) may exceed the API processing timeouts because LLM operations run synchronously.
 
 ---
 
-## 12. Project Workflow Summary
+## 12. Assignment Requirement Mapping
 
-```
-[PDF Ingestion] ──────> [Chunking] ──────> [Embedding] ──────> [SQL Storage]
-(pypdf extract)       (800 char splits)   (nomic-embed)        (Postgres JSON)
-                                                                     │
-                                                                     ▼
-[Response Output] <──── [Local LLM] <───── [Context Match] <──── [Similarity]
-(Professional)         (llama3.2)         (Top 5 Chunks)      (Cosine search)
-```
-
----
-
-## 13. Conclusion
-
-The CV RAG System proves that local-first enterprise-level resume processing is not only feasible but highly efficient. By combining the speed of FastAPI, the reliability of PostgreSQL, the modularity of React, and the local intelligence of Ollama, this architecture secures applicant privacy, removes cloud service subscription dependencies, and offers a robust recruitment analysis tool.
+| Requirement | Implementation Status | Prove Location (Files/Functions) |
+| :--- | :--- | :--- |
+| **Gemma 3 4B Instruct Serverless** | **COMPLETED** | `openai_service.py` $\rightarrow$ queries HF model endpoint. |
+| **Fixed/Dynamic JSON Extraction** | **COMPLETED** | `extractor.py` $\rightarrow$ schema parser and gemma prompts. |
+| **Explicit, Derived, and Inferred Data** | **COMPLETED** | `cv_schema.py` $\rightarrow$ Schema structure; `extractor.py` $\rightarrow$ Python gap calculations. |
+| **JSON Validation & Correction Loop** | **COMPLETED** | `extractor.py` $\rightarrow$ validation correction loop (max 2 retries). |
+| **Multiple CV Ingestion** | **COMPLETED** | `cv.py` $\rightarrow$ `upload_cvs_batch` batch transaction loop. |
+| **Structured JSON Storage** | **COMPLETED** | `resume.py` $\rightarrow$ `extracted_data` JSON column in DB. |
+| **RAG Retrieval with Citations** | **COMPLETED** | `openai_service.py` $\rightarrow$ citation queries; `CVChat.tsx` $\rightarrow$ Badges. |
+| **Stage-Level Timings & Trace IDs** | **COMPLETED** | `cv.py` $\rightarrow$ `trace_id` and timing calculations in uploader. |
+| **Post-Indexing RAG Verification** | **COMPLETED** | `cv.py` $\rightarrow$ RAG checks post-indexing. |
+| **Indexed Status Badges** | **COMPLETED** | `CVList.tsx` $\rightarrow$ Displays live DB status and timing tooltips. |

@@ -17,6 +17,16 @@ async def lifespan(app: FastAPI):
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(text("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS extracted_json JSON;"))
+            await conn.execute(text("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS extracted_data JSON;"))
+            await conn.execute(text("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'queued';"))
+            await conn.execute(text("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS error_message TEXT;"))
+            await conn.execute(text("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS trace_id VARCHAR;"))
+            await conn.execute(text("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS parsing_duration FLOAT;"))
+            await conn.execute(text("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS extraction_duration FLOAT;"))
+            await conn.execute(text("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS indexing_duration FLOAT;"))
+            await conn.execute(text("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS verification_duration FLOAT;"))
+            await conn.execute(text("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS total_duration FLOAT;"))
         print("Database tables initialized successfully.")
     except Exception as e:
         print(f"Warning: Database initialization failed (local db may be offline): {e}")

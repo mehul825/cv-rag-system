@@ -8,6 +8,14 @@ interface Resume {
   id: number;
   filename: string;
   uploaded_at: string;
+  status?: 'queued' | 'parsing' | 'extracting' | 'indexing' | 'rag_ready' | 'failed';
+  error_message?: string;
+  trace_id?: string;
+  parsing_duration?: number;
+  extraction_duration?: number;
+  indexing_duration?: number;
+  verification_duration?: number;
+  total_duration?: number;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
