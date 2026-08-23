@@ -204,7 +204,53 @@ docker compose up -d --build
 
 ---
 
-## 9. Submission Folder Structure
+## 9. Project Screenshots
+
+To visually understand the layout and functionality of the CV RAG System, here is a showcase of the main application dashboards, RAG chat sessions, and interactive API documentation pages.
+
+### Application Dashboard & User Interface
+
+#### 1. Resume Ingestion & Processing Pipeline
+This view shows the upload interface where multiple CVs are dragged and dropped. The bottom section exhibits real-time status tracking (`queued` $\rightarrow$ `parsing` $\rightarrow$ `extracting` $\rightarrow$ `indexing` $\rightarrow$ `rag_ready`) and dynamic stage timings.
+![Resume Upload & Indexing](screenshots/01_resume_upload_indexing.png)
+
+#### 2. Interactive RAG Chat Interface
+A context-bounded retrieval-augmented generation chat session where a recruiter queries the system about the candidate's professional experience and receives model answers.
+![RAG Chat Interface](screenshots/02_dashboard_rag_chat.png)
+
+#### 3. Structured Candidate Insights
+Displays the structured analysis including deterministic derived metrics (years of experience, companies, and skills count) alongside AI-inferred Insights (seniority estimate, suitable job roles, and core candidate strengths).
+![Structured Profile Insights](screenshots/03_structured_profile_insights.png)
+
+#### 4. Raw JSON Payload Output
+Renders the complete raw structured JSON extraction validated against the Pydantic schema.
+![Raw JSON Parsed Payload](screenshots/04_candidate_raw_json.png)
+
+#### 5. Indexed Resumes Management
+The management panel listing all fully processed and indexed CVs, detailing the date added, status indicator, and options to delete records.
+![Indexed Resumes List](screenshots/05_indexed_resumes_list.png)
+
+### Interactive Swagger REST API Docs
+
+#### 6. FastAPI Swagger UI Endpoints
+The interactive REST API endpoints documentation exposing batch ingestion, dynamic/fixed extraction, querying, and listing services.
+![FastAPI Swagger Endpoints](screenshots/06_swagger_api_endpoints.png)
+
+#### 7. Single CV Upload Ingestion Service
+Exposes the single CV upload multipart endpoint showing request parameters and description.
+![Swagger Ingestion Endpoint](screenshots/07_api_upload_endpoint.png)
+
+#### 8. Health Check Endpoint
+Exposes the backend REST service diagnostics check verifying database and server readiness status.
+![Swagger Health Check Endpoint](screenshots/08_health_check_endpoint.png)
+
+#### 9. Response Schema Documentation
+Defines response validation structures and expected schemas.
+![Swagger API Schemas](screenshots/09_swagger_api_schemas.png)
+
+---
+
+## 10. Submission Folder Structure
 
 The final submission package expects the following folders and files, to be created and populated during packaging:
 
@@ -227,7 +273,7 @@ demo/
 
 ---
 
-## 10. Testing & Verification Results
+## 11. Testing & Verification Results
 
 *   **Frontend User Interface**: **PASS**
 *   **Backend FastAPI Endpoints**: **PASS**
@@ -240,13 +286,13 @@ demo/
 
 ---
 
-## 11. Known Limitations
+## 12. Known Limitations
 
 *   **Batch Ingestion Size Limits**: Small batches (tested up to 3 PDFs at once) process successfully. However, large batches (e.g., 8+ files at once) may exceed the API processing timeouts because LLM operations run synchronously.
 
 ---
 
-## 12. Assignment Requirement Mapping
+## 13. Assignment Requirement Mapping
 
 | Requirement | Implementation Status | Prove Location (Files/Functions) |
 | :--- | :--- | :--- |
