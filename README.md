@@ -292,7 +292,30 @@ demo/
 
 ---
 
-## 13. Assignment Requirement Mapping
+## 13. Performance Benchmark
+
+The system includes a fully automated benchmarking suite located in the `backend/benchmark/` folder. This suite measures ingestion latency across 10 representative candidate CVs, profiles cold-start vs. warm behavior, and generates comprehensive stats (p50, p95, p99, min, max, average).
+
+For a deep dive into latency statistics and primary architectural bottlenecks (such as serverless GPU extraction latency vs. local embedding generation), please read the full report:
+👉 **[BENCHMARK_REPORT.md](BENCHMARK_REPORT.md)**
+
+### How to Run the Benchmark
+
+1. Ensure the Dockerized RAG backend and database are running (`docker compose up -d`).
+2. Navigate to the `backend/` folder and activate the Python virtual environment:
+   ```bash
+   cd backend
+   .\venv\Scripts\activate
+   ```
+3. Run the benchmark runner script:
+   ```bash
+   python benchmark/run_benchmark.py
+   ```
+   *Note: If no files are placed in `backend/benchmark/cvs/`, the script will automatically generate 10 unique, structurally valid representative candidate CV PDFs to perform the run. You can also manually drop in your own PDF files to replace or add to these.*
+
+---
+
+## 14. Assignment Requirement Mapping
 
 | Requirement | Implementation Status | Prove Location (Files/Functions) |
 | :--- | :--- | :--- |
