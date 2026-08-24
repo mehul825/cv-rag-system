@@ -431,8 +431,8 @@ def run_benchmark():
             "timestamp": datetime.now().isoformat(),
             "os": os.name,
             "backend_url": API_URL,
-            "embedding_model": "nomic-embed-text (local via Ollama)",
-            "llm_model": "google/gemma-3-4b-it (serverless via Hugging Face)"
+            "embedding_model": "sentence-transformers/all-MiniLM-L6-v2 (Cloud Embedding Endpoint)",
+            "llm_model": "google/gemma-3-4b-it (GPU Serverless / Self-hosted Endpoint)"
         },
         "cold_start": cold_result,
         "warm_requests": warm_results,
@@ -479,11 +479,11 @@ def generate_markdown_report(data):
     
     # Identify primary bottleneck
     if llm_pct > embed_pct and llm_pct > 50:
-        primary_bottleneck = "**LLM Structured Extraction** (Serverless Hugging Face Inference API)"
-        bottleneck_reason = f"It accounts for **{llm_pct:.1f}%** of the total warm request latency. This is due to remote API calls, serverless startup overhead on Hugging Face GPU nodes, and synchronous token generation loops."
+        primary_bottleneck = "**LLM Structured Extraction** (GPU Serverless / Self-hosted Endpoint)"
+        bottleneck_reason = f"It accounts for **{llm_pct:.1f}%** of the total warm request latency. This is due to remote API calls, serverless startup overhead on GPU nodes, and synchronous token generation loops."
     elif embed_pct > llm_pct:
-        primary_bottleneck = "**Vector Indexing & Embeddings** (Local Ollama nomic-embed-text)"
-        bottleneck_reason = f"It accounts for **{embed_pct:.1f}%** of the total latency. This suggests the local machine's CPU/GPU configuration running Ollama is heavily loaded or lacks hardware acceleration."
+        primary_bottleneck = "**Vector Indexing & Embeddings** (Cloud Embedding Endpoint)"
+        bottleneck_reason = f"It accounts for **{embed_pct:.1f}%** of the total latency. This suggests the cloud embedding provider configuration is heavily loaded or lacks hardware acceleration."
     else:
         primary_bottleneck = "Shared (LLM & Embeddings)"
         bottleneck_reason = "Both stages occupy significant portions of the pipeline."
@@ -515,8 +515,8 @@ The main objectives of this benchmark run are to:
 1. Measure the total client-side end-to-end ingestion latency for parsing, extracting, and indexing resume PDFs.
 2. Isolate and profile individual pipeline stage durations:
    - **Text Extraction (Parsing)**: Extracting raw text from PDF bytes via `pypdf`.
-   - **LLM Extraction**: Querying **Gemma 3 4B Instruct** via Hugging Face serverless inference to extract structured JSON data.
-   - **Vector Indexing**: Segmenting text and generating vector embeddings using the local **Ollama** instance (`nomic-embed-text`).
+    - **LLM Extraction**: Querying **Gemma 3 4B Instruct** via the serverless self-hosted GPU endpoint to extract structured JSON data.
+   - **Vector Indexing**: Segmenting text and generating vector embeddings using the Cloud Embedding Endpoint.
    - **Verification**: Querying PostgreSQL vectors post-indexing to ensure the CV is RAG-ready.
    - **Overhead**: Database writes, API routing overhead, and network roundtrip time.
 3. Compare cold-start latency against subsequent warm request performance.
@@ -539,7 +539,7 @@ The main objectives of this benchmark run are to:
 
 1. **Clean Slate State**: The script programmatically restarts the backend Docker container (`docker restart cv_rag_backend`) and waits for the database/API health checks to report healthy.
 2. **Cold-Start Request**: The first PDF CV is uploaded immediately after restart, capturing the initial database connection initialization, module imports, and serverless LLM cold-start latency.
-3. **Warm Requests**: The remaining 9 PDF CVs are uploaded sequentially. An idle interval of 1 second is placed between requests to respect Hugging Face serverless rate limits.
+3. **Warm Requests**: The remaining 9 PDF CVs are uploaded sequentially. An idle interval of 1 second is placed between requests to respect API rate limits.
 4. **Cleanup**: At the end of the runs, all database records generated during the benchmark are cleared via the REST DELETE endpoint to preserve system state.
 5. **Data Accumulation**: Individual timings are stored in a local JSON structure and metrics are aggregated.
 
@@ -589,8 +589,8 @@ A cold start is defined as the very first request executed right after the conta
 | Ingestion Stage | Cold-Start Duration | Average Warm Duration | Difference / Notes |
 | :--- | :---: | :---: | :--- |
 | **Text Parsing** | {cold['parsing_duration']:.3f}s | {sa['parsing']:.3f}s | Minimal change; python-pypdf is CPU-bound and very fast. |
-| **LLM Structured Extraction** | {cold['extraction_duration']:.2f}s | {sa['extraction']:.2f}s | Serverless Hugging Face cold starts or container provisioning triggers here. |
-| **Vector Indexing** | {cold['indexing_duration']:.2f}s | {sa['indexing']:.2f}s | Local Ollama first-run model loading or layer allocation. |
+| **LLM Structured Extraction** | {cold['extraction_duration']:.2f}s | {sa['extraction']:.2f}s | GPU Endpoint serverless cold starts or container provisioning triggers here. |
+| **Vector Indexing** | {cold['indexing_duration']:.2f}s | {sa['indexing']:.2f}s | Cloud Embedding Endpoint first-run model loading or layer allocation. |
 | **RAG Verification** | {cold['verification_duration']:.3f}s | {sa['verification']:.3f}s | First database query establishes the SQLAlchemy connection pool. |
 | **Database & Net Overhead** | {cold['overhead_duration']:.3f}s | {sa['overhead']:.3f}s | HTTP handshake and container routing latency. |
 
@@ -605,23 +605,23 @@ Based on the measured benchmarks, the primary system bottleneck is:
 
 ### Pipelines Stages Contribution (Warm Averages)
 - **LLM Structured Extraction**: {sa['extraction']:.2f}s ({llm_pct:.1f}% of total)
-- **Vector Indexing (Ollama)**: {sa['indexing']:.2f}s ({embed_pct:.1f}% of total)
+- **Vector Indexing (Cloud Embedding)**: {sa['indexing']:.2f}s ({embed_pct:.1f}% of total)
 - **RAG Verification (SQL)**: {sa['verification']:.3f}s ({(sa['verification']/sa['extraction'])*100.0 if sa['extraction'] > 0 else 0.0:.1f}%)
 - **Text Parsing (PyPDF)**: {sa['parsing']:.3f}s ({(sa['parsing']/sa['extraction'])*100.0 if sa['extraction'] > 0 else 0.0:.1f}%)
 - **Database & Net Overhead**: {sa['overhead']:.3f}s
 
 ### Insights & Diagnoses
-1. **API Latency Dominance**: The LLM structured JSON extraction takes up the vast majority of time. Because the application waits synchronously for Hugging Face to parse the text and output a valid fixed Pydantic schema, this blocks the execution thread.
-2. **Local Embedding Speed**: Generating embeddings via Ollama `nomic-embed-text` is locally executed. While faster than remote extraction, it still represents a CPU/GPU intensive operation that scales linearly with the number of text chunks.
+1. **API Latency Dominance**: The LLM structured JSON extraction takes up the vast majority of time. Because the application waits synchronously for the GPU Endpoint to parse the text and output a valid fixed Pydantic schema, this blocks the execution thread.
+2. **Cloud Embedding Speed**: Generating embeddings via the Cloud Embedding Endpoint is remotely executed. While faster than remote extraction, it still represents an API operation that scales linearly with the number of text chunks.
 3. **Database Writes**: Saving vectors into PostgreSQL via JSON array columns is highly optimized and represents a negligible fraction of the indexing stage.
 
 ---
 
 ## 9. Limitations of the Benchmark Run
 
-- **Rate Limits & Idle Timeouts**: To avoid hitting Hugging Face serverless API rate limits, a 1-second delay was artificially introduced between requests. Under real concurrent load, requests might get rate-limited (HTTP 429) or timed out.
+- **Rate Limits & Idle Timeouts**: To avoid hitting Cloud API rate limits, a 1-second delay was artificially introduced between requests. Under real concurrent load, requests might get rate-limited (HTTP 429) or timed out.
 - **Model Size**: The benchmark is specific to **Gemma 3 4B Instruct**. Upgrading to larger models (e.g., Gemma 3 27B or Llama 3 70B) will significantly increase extraction time.
-- **Hardware Variation**: Local vector generation is bound to the host CPU/GPU running Ollama. Running this on a machine without hardware acceleration (e.g., Apple Silicon or Nvidia GPU) will skew embedding speeds.
+- **Hardware Variation**: Cloud vector generation is bound to the cloud embedding provider's capacity. Running this under heavy load may affect embedding speeds.
 
 ---
 
@@ -629,7 +629,7 @@ Based on the measured benchmarks, the primary system bottleneck is:
 
 1. **Introduce Background Worker Queues**: Ingestion should be asynchronous. Uploading a PDF should immediately return a `queued` status and a trace ID, delegating the parsing, LLM extraction, and indexing to a Celery/Redis task runner. This has already been partially stubbed out in the schema, but is executed synchronously under the hood.
 2. **Enable Structured Extraction Caching**: The current system caches structured profiles on database load, which is excellent. However, if a user uploads the same resume twice, it runs the LLM again. Hashing the file bytes and checking for duplicate uploads can save significant API cost.
-3. **Batch Embedding Calls**: In `cv.py`, the embedding calls generate vectors for chunks sequentially or in one batch. Standardizing on batch calls reduces Ollama roundtrips.
+3. **Batch Embedding Calls**: In `cv.py`, the embedding calls generate vectors for chunks sequentially or in one batch. Standardizing on batch calls reduces embedding API roundtrips.
 """
 
     with open(REPORT_FILE, "w", encoding="utf-8") as f:

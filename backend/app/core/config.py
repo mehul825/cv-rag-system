@@ -1,5 +1,5 @@
 import json
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -19,15 +19,18 @@ class Settings(BaseSettings):
     # CORS Configuration
     CORS_ORIGINS: Union[str, List[str]] = ["http://localhost:5173", "http://localhost:3000"]
 
-    # Ollama Configuration
-    OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
-    OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
-    OLLAMA_CHAT_MODEL: str = "llama3.2"
+    # GPU Endpoint configuration
+    GPU_ENDPOINT_URL: str = "https://router.huggingface.co/v1"
+    GPU_API_KEY: str = ""
+    GPU_MODEL_NAME: str = "google/gemma-3-4b-it"
 
-    # Hugging Face Configuration
-    HF_TOKEN: str = ""
-    HF_MODEL: str = "google/gemma-3-4b-it"
-    HF_API_URL: str = "https://router.huggingface.co/v1"
+    # Cloud Embedding configuration
+    CLOUD_EMBEDDING_URL: str = "https://router.huggingface.co/v1"
+    CLOUD_EMBEDDING_KEY: str = ""
+    CLOUD_EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
+
+    # OpenAI-compatible library fallback
+    OPENAI_API_KEY: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -51,10 +54,6 @@ class Settings(BaseSettings):
         # Automatically point to localhost if running outside Docker and URL points to 'db'
         if not self.RUNNING_IN_DOCKER and "@db:" in self.DATABASE_URL:
             self.DATABASE_URL = self.DATABASE_URL.replace("@db:", "@localhost:")
-
-        # Automatically swap localhost for host.docker.internal when inside Docker container
-        if self.RUNNING_IN_DOCKER and "localhost" in self.OLLAMA_BASE_URL:
-            self.OLLAMA_BASE_URL = self.OLLAMA_BASE_URL.replace("localhost", "host.docker.internal")
 
 settings = Settings()
 # Reload trigger comment.

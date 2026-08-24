@@ -22,7 +22,7 @@ The main objectives of this benchmark run are to:
 
 ## 2. Test Environment
 
-- **Timestamp of Run**: `2026-08-23T06:29:20.889845`
+- **Timestamp of Run**: `2026-08-23T06:48:30.359216`
 - **Operating System**: `NT`
 - **FastAPI Backend Port**: `http://localhost:8000/api/cv`
 - **Local Embedding Engine**: `nomic-embed-text (local via Ollama)`
@@ -53,16 +53,16 @@ The main objectives of this benchmark run are to:
 
 | File Name | File Size | Cold Start? | Total Latency | Parsing Stage | LLM Extraction | Vector Indexing | RAG Verification | Database & Net Overhead |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `cv_candidate_10_neha_kapoor.pdf` | 1.63 KB | Yes (Cold) | **58.13s** | 0.005s | 53.00s | 4.72s | 0.150s | 0.113s |
-| `cv_candidate_1_aarav_sharma.pdf` | 1.67 KB | No (Warm) | **48.60s** | 0.004s | 47.18s | 1.15s | 0.145s | 0.039s |
-| `cv_candidate_2_priya_nair.pdf` | 1.62 KB | No (Warm) | **99.23s** | 0.007s | 97.70s | 1.19s | 0.147s | 0.041s |
-| `cv_candidate_3_rohan_gupta.pdf` | 1.64 KB | No (Warm) | **57.87s** | 0.005s | 56.44s | 1.13s | 0.153s | 0.038s |
-| `cv_candidate_4_ananya_iyer.pdf` | 1.63 KB | No (Warm) | **55.27s** | 0.002s | 53.85s | 1.17s | 0.153s | 0.031s |
-| `cv_candidate_5_kabir_mehta.pdf` | 1.65 KB | No (Warm) | **43.61s** | 0.003s | 42.14s | 1.17s | 0.169s | 0.036s |
-| `cv_candidate_6_sneha_reddy.pdf` | 1.64 KB | No (Warm) | **48.58s** | 0.002s | 47.18s | 1.18s | 0.135s | 0.011s |
-| `cv_candidate_7_aditya_rao.pdf` | 1.65 KB | No (Warm) | **41.00s** | 0.004s | 39.57s | 1.14s | 0.156s | 0.039s |
-| `cv_candidate_8_meera_verma.pdf` | 1.66 KB | No (Warm) | **42.33s** | 0.003s | 40.93s | 1.16s | 0.164s | 0.014s |
-| `cv_candidate_9_vikram_singh.pdf` | 1.64 KB | No (Warm) | **37.26s** | 0.006s | 35.81s | 1.15s | 0.182s | 0.025s |
+| `cv_candidate_10_neha_kapoor.pdf` | 1.63 KB | Yes (Cold) | **23.19s** | 0.004s | 18.01s | 4.81s | 0.138s | 0.101s |
+| `cv_candidate_1_aarav_sharma.pdf` | 1.67 KB | No (Warm) | **20.12s** | 0.003s | 18.70s | 1.16s | 0.155s | 0.035s |
+| `cv_candidate_2_priya_nair.pdf` | 1.62 KB | No (Warm) | **17.28s** | 0.003s | 15.82s | 1.19s | 0.150s | 0.021s |
+| `cv_candidate_3_rohan_gupta.pdf` | 1.64 KB | No (Warm) | **22.43s** | 0.005s | 20.98s | 1.16s | 0.156s | 0.026s |
+| `cv_candidate_4_ananya_iyer.pdf` | 1.63 KB | No (Warm) | **27.13s** | 0.003s | 25.98s | 0.87s | 0.164s | 0.025s |
+| `cv_candidate_5_kabir_mehta.pdf` | 1.65 KB | No (Warm) | **26.06s** | 0.010s | 23.96s | 1.37s | 0.603s | 0.028s |
+| `cv_candidate_6_sneha_reddy.pdf` | 1.64 KB | No (Warm) | **51.66s** | 0.002s | 18.95s | 1.13s | 0.977s | 0.047s |
+| `cv_candidate_7_aditya_rao.pdf` | 1.65 KB | No (Warm) | **20.82s** | 0.003s | 19.39s | 1.14s | 0.159s | 0.034s |
+| `cv_candidate_8_meera_verma.pdf` | 1.66 KB | No (Warm) | **49.27s** | 0.002s | 18.72s | 1.16s | 29.206s | 0.036s |
+| `cv_candidate_9_vikram_singh.pdf` | 1.64 KB | No (Warm) | **20.96s** | 0.005s | 19.12s | 1.13s | 0.151s | 0.219s |
 
 ---
 
@@ -72,12 +72,12 @@ The percentile and average latency values computed across the **9 warm requests*
 
 | Metric | Client-Side Ingestion Latency (Seconds) |
 | :--- | :---: |
-| **Minimum Latency** | **37.26s** |
-| **Median (p50) Latency** | **48.58s** |
-| **Average Latency** | **52.64s** |
-| **p95 Latency** | **82.69s** |
-| **p99 Latency** | **95.92s** |
-| **Maximum Latency** | **99.23s** |
+| **Minimum Latency** | **17.28s** |
+| **Median (p50) Latency** | **22.43s** |
+| **Average Latency** | **28.42s** |
+| **p95 Latency** | **50.71s** |
+| **p99 Latency** | **51.47s** |
+| **Maximum Latency** | **51.66s** |
 
 ---
 
@@ -85,19 +85,19 @@ The percentile and average latency values computed across the **9 warm requests*
 
 A cold start is defined as the very first request executed right after the container starts. This captures initialization delays which do not affect subsequent "warm" requests.
 
-- **Cold-Start Total Latency**: **58.13s**
-- **Warm Average Latency**: **52.64s**
-- **Cold-Start Overhead Factor**: **1.1x slower** than a warm request.
+- **Cold-Start Total Latency**: **23.19s**
+- **Warm Average Latency**: **28.42s**
+- **Cold-Start Overhead Factor**: **0.8x slower** than a warm request.
 
 ### Profiling Cold-Start vs. Warm Stages
 
 | Ingestion Stage | Cold-Start Duration | Average Warm Duration | Difference / Notes |
 | :--- | :---: | :---: | :--- |
-| **Text Parsing** | 0.005s | 0.004s | Minimal change; python-pypdf is CPU-bound and very fast. |
-| **LLM Structured Extraction** | 53.00s | 51.20s | Serverless Hugging Face cold starts or container provisioning triggers here. |
-| **Vector Indexing** | 4.72s | 1.16s | Local Ollama first-run model loading or layer allocation. |
-| **RAG Verification** | 0.150s | 0.156s | First database query establishes the SQLAlchemy connection pool. |
-| **Database & Net Overhead** | 0.113s | 0.030s | HTTP handshake and container routing latency. |
+| **Text Parsing** | 0.004s | 0.004s | Minimal change; python-pypdf is CPU-bound and very fast. |
+| **LLM Structured Extraction** | 18.01s | 20.18s | Serverless Hugging Face cold starts or container provisioning triggers here. |
+| **Vector Indexing** | 4.81s | 1.15s | Local Ollama first-run model loading or layer allocation. |
+| **RAG Verification** | 0.138s | 3.525s | First database query establishes the SQLAlchemy connection pool. |
+| **Database & Net Overhead** | 0.101s | 0.052s | HTTP handshake and container routing latency. |
 
 ---
 
@@ -106,14 +106,14 @@ A cold start is defined as the very first request executed right after the conta
 Based on the measured benchmarks, the primary system bottleneck is:
 
 ### ****LLM Structured Extraction** (Serverless Hugging Face Inference API)**
-It accounts for **97.3%** of the total warm request latency. This is due to remote API calls, serverless startup overhead on Hugging Face GPU nodes, and synchronous token generation loops.
+It accounts for **71.0%** of the total warm request latency. This is due to remote API calls, serverless startup overhead on Hugging Face GPU nodes, and synchronous token generation loops.
 
 ### Pipelines Stages Contribution (Warm Averages)
-- **LLM Structured Extraction**: 51.20s (97.3% of total)
-- **Vector Indexing (Ollama)**: 1.16s (2.2% of total)
-- **RAG Verification (SQL)**: 0.156s (0.3%)
+- **LLM Structured Extraction**: 20.18s (71.0% of total)
+- **Vector Indexing (Ollama)**: 1.15s (4.0% of total)
+- **RAG Verification (SQL)**: 3.525s (17.5%)
 - **Text Parsing (PyPDF)**: 0.004s (0.0%)
-- **Database & Net Overhead**: 0.030s
+- **Database & Net Overhead**: 0.052s
 
 ### Insights & Diagnoses
 1. **API Latency Dominance**: The LLM structured JSON extraction takes up the vast majority of time. Because the application waits synchronously for Hugging Face to parse the text and output a valid fixed Pydantic schema, this blocks the execution thread.

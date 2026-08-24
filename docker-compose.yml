@@ -38,6 +38,13 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-cv_rag}
       - CORS_ORIGINS=["http://localhost:5173", "http://localhost:3000"]
       - RUNNING_IN_DOCKER=true
+      - GPU_ENDPOINT_URL=${GPU_ENDPOINT_URL:-https://router.huggingface.co/v1}
+      - GPU_API_KEY=${GPU_API_KEY}
+      - GPU_MODEL_NAME=${GPU_MODEL_NAME:-google/gemma-3-4b-it}
+      - CLOUD_EMBEDDING_URL=${CLOUD_EMBEDDING_URL:-https://router.huggingface.co/v1}
+      - CLOUD_EMBEDDING_KEY=${CLOUD_EMBEDDING_KEY}
+      - CLOUD_EMBEDDING_MODEL=${CLOUD_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      - OPENAI_API_KEY=${GPU_API_KEY}
     depends_on:
       db:
         condition: service_healthy

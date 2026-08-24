@@ -3,7 +3,7 @@ import re
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from app.core.config import settings
-from app.services.openai_service import get_hf_client, get_openai_client
+from app.services.openai_service import get_gpu_client
 from app.schemas.cv_schema import CVFixedSchema, ExplicitData, DerivedData, InferredData, PersonalInfo, EducationEntry, ExperienceEntry, ProjectEntry
 
 FIXED_SYSTEM_PROMPT = """You are an advanced AI resume parser. Your task is to extract information from the CV text and structure it as a valid JSON object.
@@ -97,10 +97,7 @@ def get_active_client_and_model():
     """
     Returns the appropriate client and model based on settings.
     """
-    if settings.HF_TOKEN:
-        return get_hf_client(), settings.HF_MODEL
-    else:
-        return get_openai_client(), settings.OLLAMA_CHAT_MODEL
+    return get_gpu_client(), settings.GPU_MODEL_NAME
 
 def parse_date_string(date_str: Optional[str]) -> Optional[datetime]:
     if not date_str:
