@@ -124,15 +124,13 @@ app = FastAPI(
 # Allow Vercel frontend and local development frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://cv-rag-system.vercel.app",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ],
+    allow_origins=settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else [settings.CORS_ORIGINS],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 # Register API routes

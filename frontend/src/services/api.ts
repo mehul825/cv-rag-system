@@ -1,9 +1,12 @@
 import type { HealthCheckResponse } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && window.location.port === '5173'
-    ? 'http://localhost:8000' 
-    : 'https://cv-rag-system-production.up.railway.app');
+let rawApiUrl = import.meta.env.VITE_API_URL || '';
+if (!rawApiUrl || rawApiUrl.includes('YOUR-CURRENT-RAILWAY-DOMAIN')) {
+  rawApiUrl = typeof window !== 'undefined' && window.location.port === '5173'
+    ? 'http://localhost:8000'
+    : 'https://cv-rag-system-production.up.railway.app';
+}
+const API_BASE_URL = rawApiUrl;
 
 export async function checkHealth(): Promise<HealthCheckResponse> {
   const response = await fetch(`${API_BASE_URL}/health`);
