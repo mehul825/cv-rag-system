@@ -24,7 +24,10 @@ interface UploadingFile {
   error?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (typeof window !== 'undefined' && window.location.port === '5173'
+    ? 'http://localhost:8000' 
+    : (typeof window !== 'undefined' ? window.location.origin : ''));
 
 export const CVUpload: React.FC<CVUploadProps> = ({ onUploadSuccess }) => {
   const [isDragging, setIsDragging] = useState(false);

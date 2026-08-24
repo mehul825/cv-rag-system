@@ -1,6 +1,9 @@
 import type { HealthCheckResponse } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (typeof window !== 'undefined' && window.location.port === '5173'
+    ? 'http://localhost:8000' 
+    : (typeof window !== 'undefined' ? window.location.origin : ''));
 
 export async function checkHealth(): Promise<HealthCheckResponse> {
   const response = await fetch(`${API_BASE_URL}/health`);
