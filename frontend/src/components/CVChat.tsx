@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { API_BASE_URL } from '../services/api';
+
 
 interface Resume {
   id: number;
@@ -33,10 +35,7 @@ interface CVChatProps {
   selectedResume: Resume | null;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && window.location.port === '5173'
-    ? 'http://localhost:8000' 
-    : 'https://cv-rag-system-production.up.railway.app');
+
 
 export const CVChat: React.FC<CVChatProps> = ({ selectedResume }) => {
   const [messages, setMessages] = useState<Message[]>([]);

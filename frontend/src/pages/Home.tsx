@@ -3,6 +3,8 @@ import HealthStatus from '../components/HealthStatus';
 import CVUpload from '../components/CVUpload';
 import CVList from '../components/CVList';
 import CVChat from '../components/CVChat';
+import { API_BASE_URL } from '../services/api';
+
 
 interface Resume {
   id: number;
@@ -18,10 +20,7 @@ interface Resume {
   total_duration?: number;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && window.location.port === '5173'
-    ? 'http://localhost:8000' 
-    : 'https://cv-rag-system-production.up.railway.app');
+
 
 export const Home: React.FC = () => {
   const [resumes, setResumes] = useState<Resume[]>([]);

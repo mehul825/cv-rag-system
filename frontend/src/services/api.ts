@@ -6,7 +6,7 @@ if (!rawApiUrl || rawApiUrl.includes('YOUR-CURRENT-RAILWAY-DOMAIN')) {
     ? 'http://localhost:8000'
     : 'https://cv-rag-system-production.up.railway.app';
 }
-const API_BASE_URL = rawApiUrl;
+export const API_BASE_URL = rawApiUrl;
 
 export async function checkHealth(): Promise<HealthCheckResponse> {
   const response = await fetch(`${API_BASE_URL}/health`);

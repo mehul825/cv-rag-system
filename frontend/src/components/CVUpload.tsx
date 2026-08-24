@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { API_BASE_URL } from '../services/api';
+
 
 interface Resume {
   id: number;
@@ -24,10 +26,7 @@ interface UploadingFile {
   error?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && window.location.port === '5173'
-    ? 'http://localhost:8000' 
-    : 'https://cv-rag-system-production.up.railway.app');
+
 
 export const CVUpload: React.FC<CVUploadProps> = ({ onUploadSuccess }) => {
   const [isDragging, setIsDragging] = useState(false);
