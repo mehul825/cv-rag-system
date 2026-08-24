@@ -54,6 +54,10 @@ class Settings(BaseSettings):
         # Automatically point to localhost if running outside Docker and URL points to 'db'
         if not self.RUNNING_IN_DOCKER and "@db:" in self.DATABASE_URL:
             self.DATABASE_URL = self.DATABASE_URL.replace("@db:", "@localhost:")
+            
+        # Dynamically rewrite postgresql:// scheme to postgresql+asyncpg:// for SQLAlchemy async engine compatibility
+        if self.DATABASE_URL.startswith("postgresql://"):
+            self.DATABASE_URL = self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 settings = Settings()
 # Reload trigger comment.
