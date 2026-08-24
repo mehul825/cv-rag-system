@@ -59,5 +59,9 @@ class Settings(BaseSettings):
         if self.DATABASE_URL.startswith("postgresql://"):
             self.DATABASE_URL = self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+        # Automatically translate sslmode query parameter to ssl query parameter for asyncpg compatibility
+        if "sslmode=" in self.DATABASE_URL:
+            self.DATABASE_URL = self.DATABASE_URL.replace("sslmode=", "ssl=")
+
 settings = Settings()
 # Reload trigger comment.
