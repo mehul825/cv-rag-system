@@ -21,7 +21,7 @@ interface Resume {
 const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (typeof window !== 'undefined' && window.location.port === '5173'
     ? 'http://localhost:8000' 
-    : (typeof window !== 'undefined' ? window.location.origin : ''));
+    : 'https://cv-rag-system-production.up.railway.app');
 
 export const Home: React.FC = () => {
   const [resumes, setResumes] = useState<Resume[]>([]);

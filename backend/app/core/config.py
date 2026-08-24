@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@db:5432/cv_rag"
 
     # CORS Configuration
-    CORS_ORIGINS: Union[str, List[str]] = ["http://localhost:5173", "http://localhost:3000"]
+    CORS_ORIGINS: Union[str, List[str]] = ["http://localhost:5173", "http://localhost:3000", "https://cv-rag-system.vercel.app"]
 
     # GPU Endpoint configuration
     GPU_ENDPOINT_URL: str = "https://router.huggingface.co/v1"
