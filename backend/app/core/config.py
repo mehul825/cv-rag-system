@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # OpenAI-compatible library fallback
     OPENAI_API_KEY: Optional[str] = None
 
+    # Hugging Face Direct Token Fallback
+    HF_TOKEN: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -62,6 +65,15 @@ class Settings(BaseSettings):
         # Automatically translate sslmode query parameter to ssl query parameter for asyncpg compatibility
         if "sslmode=" in self.DATABASE_URL:
             self.DATABASE_URL = self.DATABASE_URL.replace("sslmode=", "ssl=")
+
+        # Fallback to HF_TOKEN if specific keys are empty
+        if self.HF_TOKEN:
+            if not self.GPU_API_KEY:
+                self.GPU_API_KEY = self.HF_TOKEN
+            if not self.CLOUD_EMBEDDING_KEY:
+                self.CLOUD_EMBEDDING_KEY = self.HF_TOKEN
+            if not self.OPENAI_API_KEY:
+                self.OPENAI_API_KEY = self.HF_TOKEN
 
 settings = Settings()
 # Reload trigger comment.
