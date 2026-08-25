@@ -12,27 +12,28 @@ An AI-powered CV/resume analysis, Retrieval-Augmented Generation (RAG) chat, and
 
 ---
 
+
+
 ## 1. Project Overview & Purpose
 
-The CV RAG System is designed to simplify candidate screening and structured resume parsing. During recruitment, parsing unstructured resume data into reliable profiles can be slow and prone to errors.
+The CV RAG System simplifies candidate screening and structured resume parsing. During recruitment, parsing unstructured resume data into reliable profiles can be slow and prone to errors.
 
-This project implements a hybrid local-serverless RAG and extraction pipeline:
-1. **Document Ingestion & Processing Tracking**: Uploads PDF CVs/resumes (single or batch) and cycles through real database processing states (`queued` $\rightarrow$ `parsing` $\rightarrow$ `extracting` $\rightarrow$ `indexing` $\rightarrow$ `rag_ready` or `failed`).
-2. **Document Ingestion**: Extracts raw text from uploaded PDF CVs/resumes using the `pypdf` parsing library.
-3. **Text Chunking**: Dynamically segments extracted text into semantic, overlapping blocks.
-4. **Local Vectorization**: Generates vector embeddings using the local Ollama instance running the `nomic-embed-text` model.
-5. **Vector Storage**: Indexes and stores embeddings in a PostgreSQL database as JSON arrays.
-6. **Contextual Retrieval**: Ranks CV chunks using dimension-agnostic cosine similarity calculations computed directly in Python.
-7. **Structured Parsing**: Uses the serverless Hugging Face endpoint running **Gemma 3 4B Instruct** to perform JSON extraction (both fixed schemas and dynamic/custom keys).
-8. **RAG-Backed Interaction**: Queries **Gemma 3 4B Instruct** on Hugging Face to generate professional, context-bounded answers during interactive chat sessions.
+This project implements a fully hosted production RAG and extraction pipeline:
+1. **Document Ingestion & Ingest Tracking**: Uploads PDF CVs/resumes (single or batch) and cycles through database processing states (`queued` $\rightarrow$ `parsing` $\rightarrow$ `extracting` $\rightarrow$ `indexing` $\rightarrow$ `rag_ready` or `failed`).
+2. **PDF Parsing**: Extracts raw text from PDF CVs/resumes using the `pypdf` parsing library directly from file bytes.
+3. **Text Chunking**: Segmenting text into semantic, overlapping blocks (800-character windows, 150-character overlap).
+4. **Cloud Vectorization**: Generates vector embeddings using the **Serverless Self-Hosted GPU Endpoint** running the `BAAI/bge-small-en-v1.5` model.
+5. **Vector Storage**: Indexes and stores embeddings directly in a PostgreSQL database (Neon DB) as JSON arrays.
+6. **Contextual Retrieval**: Computes dimension-agnostic cosine similarity in Python to rank CV chunks.
+7. **Structured Parsing**: Uses the **Serverless Self-Hosted GPU Endpoint** running **Gemma 3 4B Instruct** to perform JSON extraction (fixed schemas and dynamic keys).
+8. **RAG Q&A**: Queries **Gemma 3 4B Instruct** to generate professional context-bounded answers with citations.
 
-### Serverless GPU Provider Justification
+### Serverless Self-Hosted GPU Endpoint Justification
 
-The **Hugging Face Serverless Inference API** was selected as the serverless GPU provider for this project due to several key factors:
-- **On-Demand Inference**: It provides serverless execution on remote GPU hardware without requiring persistent GPU instances, meaning there is zero idle cost and high cost-efficiency.
-- **Minimal Infrastructure Management**: There is no need to set up, configure, and maintain remote GPU clusters, deploy custom Docker images on serverless container clouds (e.g., RunPod or Modal), or manage scaling policies.
-- **Model Availability**: Hugging Face natively hosts and exposes the state-of-the-art **Gemma 3 4B Instruct** model (`google/gemma-3-4b-it`) out of the box through their OpenAI-compatible endpoint.
-- **Low-Latency & High Availability**: Requests are routed dynamically to active instances, reducing cold-start times compared to custom container startup models.
+The project integrates with **Hugging Face Serverless Self-Hosted GPU Endpoints** (via Hugging Face Inference Endpoints or OpenAI-compatible custom container endpoints like vLLM) for both LLM completions and embeddings generation. This configuration satisfies the requirements:
+- **No Provider Inference API Dependency**: Unlike shared API services with strict usage limits and data privacy concerns, dedicated serverless GPU endpoints give the system full control over dedicated GPU instances, compute scale, and data security.
+- **On-Demand Auto-Scaling**: The GPU endpoints spin up and auto-scale down dynamically based on ingestion load, meaning zero idle compute cost.
+- **Unified Authentication**: Uses standard Bearer token authentication via the `HF_TOKEN` environment variable.
 
 ---
 
@@ -40,7 +41,7 @@ The **Hugging Face Serverless Inference API** was selected as the serverless GPU
 
 *   **Single and Batch PDF CV Upload**: Drag and drop one or multiple resume files. The system processes each CV inside nested transaction savepoints so individual failures do not block the batch queue.
 *   **PDF Text Parsing (`pypdf`)**: Direct text extraction from file bytes without needing intermediate disk writes.
-*   **Vector Chunking and Embeddings**: Text chunking with 800-character windows and 150-character overlap, paired with local `nomic-embed-text` embeddings.
+*   **Vector Chunking and Embeddings**: Text chunking with 800-character windows and 150-character overlap, paired with serverless `BAAI/bge-small-en-v1.5` embeddings.
 *   **RAG Chat with Citations**: Context-bounded chat completions showing source citation tooltips containing filename, chunk index, and snippet previews.
 *   **Gemma 3 4B Instruct Integration**: Serverless completions for RAG answers, structural extraction, and corrective retry iterations.
 *   **JSON Validation and Retry/Correction Loop**: Validation against Pydantic schemas. Invalid outputs are automatically sent back to the LLM with repair prompts up to 2 times.
@@ -50,7 +51,7 @@ The **Hugging Face Serverless Inference API** was selected as the serverless GPU
     *   *Inferred*: AI-deduced insights (suitability tags, seniority tier, core strengths) marked with clear warnings.
 *   **Structured PostgreSQL Storage/Cache**: Structured extraction results are saved in the `extracted_data` JSON column in PostgreSQL, avoiding redundant LLM costs on page loads.
 *   **Real Backend Ingestion Status**: Real-time status reporting (`queued` $\rightarrow$ `parsing` $\rightarrow$ `extracting` $\rightarrow$ `indexing` $\rightarrow$ `rag_ready` or `failed`).
-*   **Request/Trace IDs & Stage Timing**: Every ingestion has a unique trace UUID and records durations for parsing, extraction, embedding, verification, and total times.
+*   **Request/Trace IDs & Stage Timing**: Every Ingestion has a unique trace UUID and records durations for parsing, extraction, embedding, verification, and total times.
 *   **Post-Indexing RAG-Ready Verification**: Automatically queries the vector index post-indexing to ensure chunks are searchable before promoting status to `rag_ready`.
 *   **Resume Listing and Deletion**: Delete CV records along with all associated chunk vector embeddings.
 *   **System Health & Diagnostics**: Live REST checks for server status and database connectivity.
@@ -61,9 +62,9 @@ The **Hugging Face Serverless Inference API** was selected as the serverless GPU
 
 *   **Backend**: Python 3.11+, FastAPI, Pydantic v2, SQLAlchemy 2.0 (asyncpg driver)
 *   **Frontend**: React 18, TypeScript, Vite, Vanilla CSS HSL tokens (TailwindCSS not used)
-*   **Database**: PostgreSQL 16
-*   **LLM Inference (Chat & Extraction)**: Hugging Face Serverless Inference (`google/gemma-3-4b-it`)
-*   **Embedding Engine (Local Vectors)**: Ollama (`nomic-embed-text`)
+*   **Database**: PostgreSQL 16 (Neon DB in production)
+*   **LLM Inference (Chat & Extraction)**: Hugging Face Serverless Self-Hosted GPU Endpoint (`google/gemma-3-4b-it`)
+*   **Embedding Engine**: Hugging Face Serverless Self-Hosted GPU Endpoint (`BAAI/bge-small-en-v1.5`)
 *   **PDF Parser**: `pypdf`
 *   **Orchestration**: Docker, Docker Compose
 
@@ -131,23 +132,39 @@ cv-rag-system/
 
 ## 6. Setup & Running Instructions
 
-### Prerequisites
-*   [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
-*   [Ollama](https://ollama.com/) installed and running on the host machine.
+The system is configured to run fully in production with zero local dependencies. For local development and testing, you can run the stack using Docker Compose and optionally run a local embedding model via Ollama.
 
-### Step 1: Set Up Local Embedding Model
-In your host command terminal, pull the embeddings model:
+### 1. Production Environment Configuration
+
+In production, all services are hosted (Vercel, Railway, Neon DB, and Hugging Face GPU Endpoints). To configure the production environment, set the following environment variables in your hosting provider (e.g. Railway):
+
+*   **`DATABASE_URL`**: Your async PostgreSQL connection string (`postgresql+asyncpg://...`).
+*   **`HF_TOKEN`**: Your Hugging Face User Access Token (used as the default fallback for all serverless self-hosted GPU endpoint queries).
+*   **`CORS_ORIGINS`**: A JSON list of permitted origins, e.g., `["https://cv-rag-system.vercel.app"]`.
+
+---
+
+### 2. Optional Local Development & Testing
+
+Follow these steps to run the complete environment locally on your machine.
+
+#### Prerequisites
+*   [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+*   *(Optional)* [Ollama](https://ollama.com/) installed if you wish to run embeddings locally using `nomic-embed-text` instead of the Hugging Face GPU Endpoints.
+
+#### Step 1: Set Up Optional Local Embedding Model (Ollama)
+If you wish to test local embeddings generation, pull the nomic embeddings model:
 ```bash
 ollama pull nomic-embed-text
 ```
 
-### Step 2: Configure Environment Variables
-Create a `.env` file in the `backend/` folder by copying `.env.example`:
+#### Step 2: Configure Local Environment Variables
+Create a `.env` file in the `backend/` folder by copying `backend/.env.example`:
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-Edit `backend/.env` to configure your tokens (placeholders below, do not commit raw tokens):
+Edit `backend/.env` with your settings (placeholders below, do not commit actual secrets):
 ```env
 PROJECT_NAME="CV RAG System API"
 APP_ENV=development
@@ -160,25 +177,26 @@ POSTGRES_HOST=db
 POSTGRES_PORT=5432
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/cv_rag
 
-OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
-OLLAMA_EMBEDDING_MODEL=nomic-embed-text
-
-# Hugging Face Unified Token Fallback (Recommended)
+# Unified Hugging Face Token Fallback (for LLM and Cloud Embeddings)
 HF_TOKEN=your_hugging_face_token_here
 HF_MODEL=google/gemma-3-4b-it
 
 # Specific API Keys (Optional, falls back to HF_TOKEN if empty)
 GPU_API_KEY=
 CLOUD_EMBEDDING_KEY=
+
+# Local Ollama Configuration (Only used if testing local embedding generation)
+OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text
 ```
 
-### Step 3: Run the Application
+#### Step 3: Run the Application locally
 From the repository root, build and start all containers:
 ```bash
 docker compose up -d --build
 ```
 
-### Step 4: Access the System
+#### Step 4: Access the Local Services
 *   **Web Frontend Interface**: `http://localhost:5173`
 *   **FastAPI REST API**: `http://localhost:8000`
 *   **Swagger API Docs**: `http://localhost:8000/docs`
@@ -305,12 +323,12 @@ demo/
 
 The system includes a fully automated benchmarking suite located in the `backend/benchmark/` folder. This suite measures ingestion latency across 10 representative candidate CVs, profiles cold-start vs. warm behavior, and generates comprehensive stats (p50, p95, p99, min, max, average).
 
-For a deep dive into latency statistics and primary architectural bottlenecks (such as serverless GPU extraction latency vs. local embedding generation), please read the full report:
+For a deep dive into latency statistics and primary architectural bottlenecks (such as serverless GPU extraction latency vs. serverless self-hosted GPU embedding generation), please read the full report:
 👉 **[BENCHMARK_REPORT.md](BENCHMARK_REPORT.md)**
 
 ### How to Run the Benchmark
 
-1. Ensure the Dockerized RAG backend and database are running (`docker compose up -d`).
+1. Ensure the backend and database are running.
 2. Navigate to the `backend/` folder and activate the Python virtual environment:
    ```bash
    cd backend
@@ -329,6 +347,7 @@ For a deep dive into latency statistics and primary architectural bottlenecks (s
 | Requirement | Implementation Status | Prove Location (Files/Functions) |
 | :--- | :--- | :--- |
 | **Gemma 3 4B Instruct Serverless** | **COMPLETED** | `openai_service.py` $\rightarrow$ queries HF model endpoint. |
+| **Serverless Self-Hosted GPU Endpoint** | **COMPLETED** | `config.py` $\rightarrow$ dynamic endpoints supporting dedicated self-hosted serverless GPU containers. |
 | **Fixed/Dynamic JSON Extraction** | **COMPLETED** | `extractor.py` $\rightarrow$ schema parser and gemma prompts. |
 | **Explicit, Derived, and Inferred Data** | **COMPLETED** | `cv_schema.py` $\rightarrow$ Schema structure; `extractor.py` $\rightarrow$ Python gap calculations. |
 | **JSON Validation & Correction Loop** | **COMPLETED** | `extractor.py` $\rightarrow$ validation correction loop (max 2 retries). |

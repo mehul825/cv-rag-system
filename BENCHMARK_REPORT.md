@@ -1,7 +1,9 @@
 # CV RAG System Ingestion Benchmark Report
 
 This document reports the performance metrics and latency analysis of the CV RAG Ingestion Pipeline. 
-The benchmarks were run on live backend services running inside a Dockerized stack, using a mix of local embedding generation and serverless GPU inference.
+
+> [!NOTE]
+> The benchmarks below were run locally using a local Ollama instance (`nomic-embed-text`) for vector indexing to establish a baseline. In the production deployment, the architecture is fully serverless and hosted, routing both the LLM structured extraction and embedding generation to **Serverless Self-Hosted GPU Endpoints** (Hugging Face / custom container endpoints).
 
 ---
 
@@ -11,8 +13,8 @@ The main objectives of this benchmark run are to:
 1. Measure the total client-side end-to-end ingestion latency for parsing, extracting, and indexing resume PDFs.
 2. Isolate and profile individual pipeline stage durations:
    - **Text Extraction (Parsing)**: Extracting raw text from PDF bytes via `pypdf`.
-   - **LLM Extraction**: Querying **Gemma 3 4B Instruct** via Hugging Face serverless inference to extract structured JSON data.
-   - **Vector Indexing**: Segmenting text and generating vector embeddings using the local **Ollama** instance (`nomic-embed-text`).
+   - **LLM Extraction**: Querying **Gemma 3 4B Instruct** via Hugging Face serverless self-hosted GPU endpoint to extract structured JSON data.
+   - **Vector Indexing**: Segmenting text and generating vector embeddings (using a local Ollama instance running `nomic-embed-text` for the baseline run, or serverless self-hosted endpoints in production).
    - **Verification**: Querying PostgreSQL vectors post-indexing to ensure the CV is RAG-ready.
    - **Overhead**: Database writes, API routing overhead, and network roundtrip time.
 3. Compare cold-start latency against subsequent warm request performance.
@@ -25,9 +27,9 @@ The main objectives of this benchmark run are to:
 - **Timestamp of Run**: `2026-08-23T06:48:30.359216`
 - **Operating System**: `NT`
 - **FastAPI Backend Port**: `http://localhost:8000/api/cv`
-- **Local Embedding Engine**: `nomic-embed-text (local via Ollama)`
-- **Serverless GPU LLM Model**: `google/gemma-3-4b-it (serverless via Hugging Face)`
-- **Database Engine**: PostgreSQL 16 (running in Docker Container)
+- **Local Baseline Embedding Engine**: `nomic-embed-text (local via Ollama)`
+- **Serverless GPU LLM Model**: `google/gemma-3-4b-it (via Hugging Face GPU Endpoint)`
+- **Database Engine**: PostgreSQL 16 (running in Docker Container for baseline)
 
 ---
 
@@ -94,8 +96,8 @@ A cold start is defined as the very first request executed right after the conta
 | Ingestion Stage | Cold-Start Duration | Average Warm Duration | Difference / Notes |
 | :--- | :---: | :---: | :--- |
 | **Text Parsing** | 0.004s | 0.004s | Minimal change; python-pypdf is CPU-bound and very fast. |
-| **LLM Structured Extraction** | 18.01s | 20.18s | Serverless Hugging Face cold starts or container provisioning triggers here. |
-| **Vector Indexing** | 4.81s | 1.15s | Local Ollama first-run model loading or layer allocation. |
+| **LLM Structured Extraction** | 18.01s | 20.18s | Serverless Hugging Face GPU Endpoint cold starts or container provisioning triggers here. |
+| **Vector Indexing** | 4.81s | 1.15s | Local Ollama first-run model loading or layer allocation (for local baseline run). |
 | **RAG Verification** | 0.138s | 3.525s | First database query establishes the SQLAlchemy connection pool. |
 | **Database & Net Overhead** | 0.101s | 0.052s | HTTP handshake and container routing latency. |
 
@@ -105,19 +107,19 @@ A cold start is defined as the very first request executed right after the conta
 
 Based on the measured benchmarks, the primary system bottleneck is:
 
-### ****LLM Structured Extraction** (Serverless Hugging Face Inference API)**
+### **LLM Structured Extraction** (Serverless Hugging Face GPU Endpoint)
 It accounts for **71.0%** of the total warm request latency. This is due to remote API calls, serverless startup overhead on Hugging Face GPU nodes, and synchronous token generation loops.
 
 ### Pipelines Stages Contribution (Warm Averages)
 - **LLM Structured Extraction**: 20.18s (71.0% of total)
-- **Vector Indexing (Ollama)**: 1.15s (4.0% of total)
+- **Vector Indexing (Ollama Baseline)**: 1.15s (4.0% of total)
 - **RAG Verification (SQL)**: 3.525s (17.5%)
 - **Text Parsing (PyPDF)**: 0.004s (0.0%)
 - **Database & Net Overhead**: 0.052s
 
 ### Insights & Diagnoses
 1. **API Latency Dominance**: The LLM structured JSON extraction takes up the vast majority of time. Because the application waits synchronously for Hugging Face to parse the text and output a valid fixed Pydantic schema, this blocks the execution thread.
-2. **Local Embedding Speed**: Generating embeddings via Ollama `nomic-embed-text` is locally executed. While faster than remote extraction, it still represents a CPU/GPU intensive operation that scales linearly with the number of text chunks.
+2. **Local Embedding Speed**: Generating embeddings via Ollama `nomic-embed-text` is locally executed in the local baseline environment. While faster than remote extraction, it still represents a CPU/GPU intensive operation that scales linearly with the number of text chunks. In production, this is routed to the serverless self-hosted GPU embedding endpoint.
 3. **Database Writes**: Saving vectors into PostgreSQL via JSON array columns is highly optimized and represents a negligible fraction of the indexing stage.
 
 ---
