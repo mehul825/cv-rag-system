@@ -71,22 +71,18 @@ The **Hugging Face Serverless Inference API** was selected as the serverless GPU
 
 ## 4. System Architecture
 
-The following block chart maps the data flow throughout the application:
+The following diagram maps the production deployment data flow throughout the application:
 
 ```
-                                  User
-                                    ↓
-                              React Frontend
-                                    ↓
-                             FastAPI Backend
-                                    ├── PDF Parsing [pypdf]
-                                    ├── Text Chunking
-                                    ├── Ollama → nomic-embed-text → Embeddings
-                                    ├── PostgreSQL → Resume Data / Chunks / Structured JSON
-                                    ├── Cosine Similarity → RAG Retrieval
-                                    └── Hugging Face → google/gemma-3-4b-it
-                                                          ↓
-                                                   Answer + Citations
+        User
+          ↓
+   Vercel Frontend
+          ↓
+Railway FastAPI Backend
+          ↓
+Hosted GPU / LLM and Embedding Endpoint (Hugging Face)
+          ↓
+  PostgreSQL Database (Neon DB)
 ```
 
 ---
