@@ -165,32 +165,10 @@ async def health_check(
         else "degraded"
     )
 
-    gpu_key = settings.GPU_API_KEY or ""
-    cloud_key = settings.CLOUD_EMBEDDING_KEY or ""
-    hf_token = settings.HF_TOKEN or ""
-
-    import os
-    env_keys = [
-        k for k in os.environ.keys()
-        if "TOKEN" in k.upper() or "KEY" in k.upper() or "HF" in k.upper()
-    ]
-
     return {
         "status": status,
         "services": {
             "api": "healthy",
             "database": database_status
-        },
-        "diagnostics": {
-            "gpu_key_configured": bool(gpu_key),
-            "gpu_key_prefix": gpu_key[:6] if gpu_key else None,
-            "gpu_key_len": len(gpu_key),
-            "cloud_key_configured": bool(cloud_key),
-            "cloud_key_prefix": cloud_key[:6] if cloud_key else None,
-            "cloud_key_len": len(cloud_key),
-            "hf_token_configured": bool(hf_token),
-            "hf_token_prefix": hf_token[:6] if hf_token else None,
-            "hf_token_len": len(hf_token),
-            "visible_env_keys": env_keys
         }
     }

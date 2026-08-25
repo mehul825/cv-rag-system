@@ -4,6 +4,14 @@ An AI-powered CV/resume analysis, Retrieval-Augmented Generation (RAG) chat, and
 
 ---
 
+## 🚀 Live Deployed URLs
+
+*   **Production Frontend (Vercel)**: [https://cv-rag-system.vercel.app](https://cv-rag-system.vercel.app)
+*   **Production Backend API (Railway)**: [https://cv-rag-system-production.up.railway.app](https://cv-rag-system-production.up.railway.app)
+*   **Swagger API Documentation**: [https://cv-rag-system-production.up.railway.app/docs](https://cv-rag-system-production.up.railway.app/docs)
+
+---
+
 ## 1. Project Overview & Purpose
 
 The CV RAG System is designed to simplify candidate screening and structured resume parsing. During recruitment, parsing unstructured resume data into reliable profiles can be slow and prone to errors.
@@ -159,8 +167,13 @@ DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/cv_rag
 OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text
 
+# Hugging Face Unified Token Fallback (Recommended)
 HF_TOKEN=your_hugging_face_token_here
 HF_MODEL=google/gemma-3-4b-it
+
+# Specific API Keys (Optional, falls back to HF_TOKEN if empty)
+GPU_API_KEY=
+CLOUD_EMBEDDING_KEY=
 ```
 
 ### Step 3: Run the Application
