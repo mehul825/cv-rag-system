@@ -152,14 +152,12 @@ async def health_check(
     db: AsyncSession = Depends(get_db)
 ):
     database_status = "healthy"
-    error_msg = None
 
     try:
         # Check PostgreSQL connection
         await db.execute(text("SELECT 1"))
     except Exception as e:
         database_status = f"unhealthy: {str(e)}"
-        error_msg = str(e)
 
     status = (
         "healthy"
@@ -167,34 +165,10 @@ async def health_check(
         else "degraded"
     )
 
-    import urllib.parse
-    db_host = "Unknown"
-    db_port = "Unknown"
-    db_name = "Unknown"
-    try:
-        # Clean scheme if needed
-        url_to_parse = settings.DATABASE_URL
-        if url_to_parse.startswith("postgresql+asyncpg://"):
-            url_to_parse = url_to_parse.replace("postgresql+asyncpg://", "postgresql://", 1)
-        parsed = urllib.parse.urlparse(url_to_parse)
-        db_host = parsed.hostname or "Unknown"
-        db_port = parsed.port or "Unknown"
-        db_name = parsed.path.lstrip("/") if parsed.path else "Unknown"
-    except Exception as parse_err:
-        print(f"Error parsing database URL: {parse_err}")
-
     return {
         "status": status,
         "services": {
             "api": "healthy",
             "database": database_status
-        },
-        "diagnostics": {
-            "db_host": db_host,
-            "db_port": db_port,
-            "db_name": db_name,
-            "ssl_mode": "ssl=" in settings.DATABASE_URL or "sslmode=" in settings.DATABASE_URL,
-            "running_in_docker": settings.RUNNING_IN_DOCKER,
-            "error_detail": error_msg
         }
     }
