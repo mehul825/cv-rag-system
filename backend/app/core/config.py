@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "cv_rag"
     POSTGRES_HOST: str = "db"
     POSTGRES_PORT: int = 5432
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@db:5432/cv_rag"
+    DATABASE_URL: str = "postgresql+asyncpg://neondb_owner:npg_40FgyqdNVtBv@ep-aged-king-aypoc6rn.c-5.us-east-2.aws.neon.tech/neondb?ssl=require"
 
     # CORS Configuration
     CORS_ORIGINS: Union[str, List[str]] = ["http://localhost:5173", "http://localhost:3000", "https://cv-rag-system.vercel.app"]
