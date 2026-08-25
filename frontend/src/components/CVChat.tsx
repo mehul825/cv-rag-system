@@ -77,7 +77,7 @@ export const CVChat: React.FC<CVChatProps> = ({ selectedResume }) => {
 
   // Fetch structured profile data
   const fetchProfileData = async () => {
-    if (!selectedResume) return;
+    if (!selectedResume || selectedResume.status !== 'rag_ready') return;
     setIsExtracting(true);
     setExtractionError(null);
     try {
@@ -99,18 +99,30 @@ export const CVChat: React.FC<CVChatProps> = ({ selectedResume }) => {
   // Handle switching resumes
   useEffect(() => {
     if (selectedResume) {
-      setMessages([
-        {
-          id: 'welcome',
-          sender: 'system',
-          text: `You have loaded "${selectedResume.filename}". Ask me any questions regarding their experience, education, projects, or skill set.`,
-          timestamp: new Date()
+      // Only reset messages if we're switching to a completely different CV
+      // to avoid resetting the chat history when the status of the current CV updates
+      setMessages(prev => {
+        const welcomeMessageExists = prev.some(m => m.id === 'welcome');
+        if (welcomeMessageExists && prev[0]?.text.includes(selectedResume.filename)) {
+          return prev;
         }
-      ]);
+        return [
+          {
+            id: 'welcome',
+            sender: 'system',
+            text: `You have loaded "${selectedResume.filename}". Ask me any questions regarding their experience, education, projects, or skill set.`,
+            timestamp: new Date()
+          }
+        ];
+      });
+      
       setActiveTab('chat');
       setExtractedProfile(null);
       setExtractionError(null);
-      fetchProfileData();
+      
+      if (selectedResume.status === 'rag_ready') {
+        fetchProfileData();
+      }
     } else {
       setMessages([]);
       setExtractedProfile(null);
@@ -197,6 +209,45 @@ export const CVChat: React.FC<CVChatProps> = ({ selectedResume }) => {
           </div>
           <h4>Interactive Candidate Analyzer</h4>
           <p>Select an indexed CV from the left sidebar to start asking questions or viewing extracted candidate data.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedResume.status && selectedResume.status !== 'rag_ready') {
+    if (selectedResume.status === 'failed') {
+      return (
+        <div className="cv-chat-placeholder">
+          <div className="placeholder-content">
+            <div className="chat-placeholder-icon" style={{ color: '#f43f5e', background: 'rgba(244, 63, 94, 0.05)' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <h4 style={{ color: '#fda4af' }}>CV Ingestion Failed</h4>
+            <p style={{ color: 'var(--text-secondary)' }}>
+              {selectedResume.error_message || 'An unknown error occurred during CV processing.'}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="cv-chat-placeholder">
+        <div className="placeholder-content">
+          <div className="status-spinner-container" style={{ marginBottom: '1.5rem' }}>
+            <div className="upload-spinner"></div>
+          </div>
+          <h4>Ingesting & Indexing CV...</h4>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+            Current step: <strong style={{ textTransform: 'capitalize', color: '#a5b4fc' }}>{selectedResume.status.replace('_', ' ')}</strong>
+          </p>
+          <p style={{ fontSize: '0.8rem', opacity: 0.7, color: 'var(--text-muted)', maxWidth: '300px' }}>
+            Please wait while the AI extracts details, generates vector embeddings, and verifies RAG readiness.
+          </p>
         </div>
       </div>
     );

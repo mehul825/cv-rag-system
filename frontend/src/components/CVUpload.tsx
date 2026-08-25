@@ -18,6 +18,8 @@ interface Resume {
 
 interface CVUploadProps {
   onUploadSuccess: (resume: Resume) => void;
+  onUploadStart?: () => void;
+  onUploadComplete?: () => void;
 }
 
 interface UploadingFile {
@@ -28,7 +30,11 @@ interface UploadingFile {
 
 
 
-export const CVUpload: React.FC<CVUploadProps> = ({ onUploadSuccess }) => {
+export const CVUpload: React.FC<CVUploadProps> = ({ 
+  onUploadSuccess,
+  onUploadStart,
+  onUploadComplete
+}) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,9 +93,10 @@ export const CVUpload: React.FC<CVUploadProps> = ({ onUploadSuccess }) => {
     });
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for batch
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 300s (5 min) timeout for batch
 
     try {
+      if (onUploadStart) onUploadStart();
       // Simulate state transitions on client side for responsive feedback
       setTimeout(() => {
         setBatchFiles(prev => 
@@ -155,6 +162,7 @@ export const CVUpload: React.FC<CVUploadProps> = ({ onUploadSuccess }) => {
       setError(isAbortError ? 'Batch processing timed out. Please try again with fewer files.' : errMsg);
     } finally {
       setIsUploading(false);
+      if (onUploadComplete) onUploadComplete();
     }
   };
 

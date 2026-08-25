@@ -26,6 +26,7 @@ export const Home: React.FC = () => {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Retrieve existing resumes on load
   const fetchResumes = async () => {
@@ -45,6 +46,46 @@ export const Home: React.FC = () => {
   useEffect(() => {
     fetchResumes();
   }, []);
+
+  // Poll CV status while uploading or while any resume is processing
+  useEffect(() => {
+    const hasProcessing = resumes.some(
+      r => r.status && ['queued', 'parsing', 'extracting', 'indexing'].includes(r.status)
+    );
+
+    if (isUploading || hasProcessing) {
+      const interval = setInterval(() => {
+        fetchResumes();
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [isUploading, resumes]);
+
+  // Synchronize selectedResume whenever resumes list updates
+  useEffect(() => {
+    if (selectedResume) {
+      const updated = resumes.find(r => r.id === selectedResume.id);
+      if (updated && (
+        updated.status !== selectedResume.status || 
+        updated.error_message !== selectedResume.error_message ||
+        updated.total_duration !== selectedResume.total_duration
+      )) {
+        setSelectedResume(updated);
+      }
+    }
+  }, [resumes, selectedResume]);
+
+  const handleUploadStart = () => {
+    setIsUploading(true);
+    // Fetch immediately to register the new resume in the list as queued/parsing
+    setTimeout(() => fetchResumes(), 500);
+    setTimeout(() => fetchResumes(), 1500);
+  };
+
+  const handleUploadComplete = () => {
+    setIsUploading(false);
+    fetchResumes();
+  };
 
   const handleUploadSuccess = (newResume: Resume) => {
     fetchResumes(); // Fetch list to get latest state from database
@@ -92,7 +133,11 @@ export const Home: React.FC = () => {
           </section>
           
           {/* CV Upload */}
-          <CVUpload onUploadSuccess={handleUploadSuccess} />
+          <CVUpload 
+            onUploadSuccess={handleUploadSuccess} 
+            onUploadStart={handleUploadStart}
+            onUploadComplete={handleUploadComplete}
+          />
           
           {/* Indexed CV List */}
           {error ? (
