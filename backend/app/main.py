@@ -169,6 +169,12 @@ async def health_check(
     cloud_key = settings.CLOUD_EMBEDDING_KEY or ""
     hf_token = settings.HF_TOKEN or ""
 
+    import os
+    env_keys = [
+        k for k in os.environ.keys()
+        if "TOKEN" in k.upper() or "KEY" in k.upper() or "HF" in k.upper()
+    ]
+
     return {
         "status": status,
         "services": {
@@ -184,6 +190,7 @@ async def health_check(
             "cloud_key_len": len(cloud_key),
             "hf_token_configured": bool(hf_token),
             "hf_token_prefix": hf_token[:6] if hf_token else None,
-            "hf_token_len": len(hf_token)
+            "hf_token_len": len(hf_token),
+            "visible_env_keys": env_keys
         }
     }
