@@ -21,8 +21,8 @@ def get_gpu_client() -> OpenAI:
 
 def get_embedding_client() -> OpenAI:
     """
-    Retained for compatibility with existing code.
-    Gemini embeddings are called through the REST API below.
+    Retain the existing OpenAI-compatible embedding client for compatibility.
+    Gemini embeddings are generated using the REST API below.
     """
     api_key = settings.CLOUD_EMBEDDING_KEY
 
@@ -74,6 +74,7 @@ def generate_embeddings_batch(texts: list[str]) -> list[list[float]]:
 
     for text in texts:
         payload = {
+            "model": "models/gemini-embedding-2",
             "content": {
                 "parts": [
                     {
@@ -81,7 +82,7 @@ def generate_embeddings_batch(texts: list[str]) -> list[list[float]]:
                     }
                 ]
             },
-            "output_dimensionality": 768,
+            "outputDimensionality": 768,
         }
 
         request = urllib.request.Request(
@@ -100,20 +101,36 @@ def generate_embeddings_batch(texts: list[str]) -> list[list[float]]:
                     response.read().decode("utf-8")
                 )
 
-            values = (
-                response_data
-                .get("embedding", {})
-                .get("values")
-            )
+            # Support both singular and plural embedding response formats.
+            embedding_data = response_data.get("embedding")
+
+            if isinstance(embedding_data, dict):
+                values = embedding_data.get("values")
+            else:
+                embedding_list = response_data.get("embeddings", [])
+                values = (
+                    embedding_list[0].get("values")
+                    if (
+                        embedding_list
+                        and isinstance(embedding_list[0], dict)
+                    )
+                    else None
+                )
 
             if not values:
                 raise RuntimeError(
                     f"Gemini returned no embedding: {response_data}"
                 )
 
-            embeddings.append(
-                [float(value) for value in values]
-            )
+            vector = [float(value) for value in values]
+
+            if len(vector) != 768:
+                raise RuntimeError(
+                    "Unexpected Gemini embedding dimension: "
+                    f"expected 768, received {len(vector)}."
+                )
+
+            embeddings.append(vector)
 
         except urllib.error.HTTPError as error:
             error_body = error.read().decode(
